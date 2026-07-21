@@ -78,60 +78,61 @@
             btn.textContent = 'Загрузка...';
             status.textContent = '⏳ Открываем окно авторизации...';
 
-            // Генерируем уникальный state
             const state = Math.random().toString(36).substring(2, 15) + 
                          Math.random().toString(36).substring(2, 15);
-
-            // Генерируем code_challenge
             const challenge = Math.random().toString(36).substring(2, 15) +
                             Math.random().toString(36).substring(2, 15) +
                             Math.random().toString(36).substring(2, 15);
 
-            // ГЛАВНОЕ: используем СХЕМУ tg:// для прямого открытия
-            const tgLink = 
-                'tg://resolve?' +
-                'domain=oauth.telegram.org' +
-                '&startauth=' + encodeURIComponent(
-                    'client_id=8156315866' +
-                    '&redirect_uri=https%3A%2F%2Fwww.mrkt.land%2Fapi%2Fv1%2Ftg_openid%2Fcallback' +
-                    '&response_type=code' +
-                    '&scope=openid%20profile' +
-                    '&state=' + state +
-                    '&code_challenge=' + challenge +
-                    '&code_challenge_method=S256'
-                );
+            const authUrl = 
+                'https://oauth.telegram.org/auth?' +
+                'client_id=8156315866' +
+                '&redirect_uri=https%3A%2F%2Fwww.mrkt.land%2Fapi%2Fv1%2Ftg_openid%2Fcallback' +
+                '&response_type=code' +
+                '&scope=openid%20profile' +
+                '&state=' + state +
+                '&code_challenge=' + challenge +
+                '&code_challenge_method=S256';
 
-            console.log('Opening tg link:', tgLink);
+            console.log('Opening auth URL:', authUrl);
 
+            // ПРОБУЕМ РАЗНЫЕ СПОСОБЫ ОДИН ЗА ДРУГИМ
+
+            // Способ 1: открываем через Telegram WebApp
             try {
-                // Способ 1: открываем через схему tg:// (работает внутри Telegram!)
-                tg.openLink(tgLink);
-                status.textContent = '✅ Окно авторизации открыто!';
-                btn.disabled = false;
-                btn.textContent = 'Войти в MRKT';
+                if (tg && typeof tg.openLink === 'function') {
+                    tg.openLink(authUrl);
+                    status.textContent = '✅ Окно авторизации открыто!';
+                    btn.disabled = false;
+                    btn.textContent = 'Войти в MRKT';
+                    return;
+                }
             } catch (e) {
-                console.error('tg.openLink failed:', e);
-                
-                // Способ 2: если не сработало, используем прямую ссылку
-                const authUrl = 
-                    'https://oauth.telegram.org/auth?' +
-                    'client_id=8156315866' +
-                    '&redirect_uri=https%3A%2F%2Fwww.mrkt.land%2Fapi%2Fv1%2Ftg_openid%2Fcallback' +
-                    '&response_type=code' +
-                    '&scope=openid%20profile' +
-                    '&state=' + state +
-                    '&code_challenge=' + challenge +
-                    '&code_challenge_method=S256';
-
-                // Открываем через iframe (чтобы не покидать приложение)
-                const iframe = document.createElement('iframe');
-                iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;border:none;background:var(--tg-theme-bg-color, #0a0a0a);';
-                iframe.src = authUrl;
-                document.body.appendChild(iframe);
-                status.textContent = '✅ Если ничего не открылось, проверьте консоль (F12)';
-                btn.disabled = false;
-                btn.textContent = 'Войти в MRKT';
+                console.log('tg.openLink failed:', e);
             }
+
+            // Способ 2: прямой переход (работает внутри Telegram!)
+            try {
+                window.location.href = authUrl;
+                // Если переход не произошел (заблокирован), разблокируем кнопку
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Войти в MRKT';
+                    status.textContent = '⚠️ Проверьте, открылось ли окно авторизации';
+                }, 3000);
+                return;
+            } catch (e) {
+                console.log('window.location failed:', e);
+            }
+
+            // Способ 3: через iframe (экстренный случай)
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;border:none;';
+            iframe.src = authUrl;
+            document.body.appendChild(iframe);
+            status.textContent = '✅ Если ничего не открылось, проверьте консоль (F12)';
+            btn.disabled = false;
+            btn.textContent = 'Войти в MRKT';
         }
     </script>
 </body>
