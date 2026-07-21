@@ -64,7 +64,7 @@
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #status {
-            margin-top: 20px;
+            margin-top: 16px;
             font-size: 14px;
             color: var(--tg-theme-hint-color, #666);
             min-height: 20px;
@@ -73,7 +73,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">🏠</div>
+        <div class="logo">📱</div>
         <h1>MRKT вход</h1>
         <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
         
@@ -85,39 +85,34 @@
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // Генерация случайной строки
         function randomString(length = 10) {
             return Math.random().toString(36).substring(2, 2 + length);
         }
 
-        // Генерация code_challenge
         function generateChallenge() {
             return randomString(15) + randomString(15) + randomString(15);
         }
 
-        function loginToMRKT() {
+        async function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
             
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
-            status.textContent = '⏳ Открываем окно авторизации...';
+            status.textContent = '⏳ Отправка запроса...';
 
-            // Генерируем уникальные параметры
             const state = randomString(12) + randomString(12);
             const challenge = generateChallenge();
 
-            // =====================================================================
-            // ⚡ СЕКРЕТНЫЙ СПОСОБ: ИСПОЛЬЗУЕМ СХЕМУ tg:// ДЛЯ ПРЯМОГО ОТКРЫТИЯ
-            // =====================================================================
+            // ============================================================
+            // ⚡ ТЕЛЕФОН: открываем окно авторизации ВНУТРИ Telegram
+            // ============================================================
             
-            // Формируем параметры для авторизации
-            const params = new URLSearchParams({
+            const params = {
                 client_id: '8156315866',
                 redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
                 response_type: 'code',
@@ -125,40 +120,45 @@
                 state: state,
                 code_challenge: challenge,
                 code_challenge_method: 'S256'
-            });
+            };
 
-            // Создаём ссылку для открытия через Telegram
-            const tgLink = 'tg://resolve?' + new URLSearchParams({
-                domain: 'oauth.telegram.org',
-                startauth: params.toString()
-            });
+            // Формируем ссылку для авторизации (без origin!)
+            const authUrl = 'https://oauth.telegram.org/auth?' + new URLSearchParams(params).toString();
 
-            console.log('🔗 Открываем через tg://:', tgLink);
+            console.log('🔗 URL:', authUrl);
 
-            // Пробуем открыть через Telegram WebApp
             try {
-                // Способ 1: через openTelegramLink (работает для tg:// ссылок)
+                // ============================================================
+                // ГЛАВНОЕ: используем tg.openTelegramLink для открытия ВНУТРИ Telegram
+                // ============================================================
+                
+                // Способ 1: через openTelegramLink (работает на телефоне)
                 if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(tgLink);
+                    tg.openTelegramLink(authUrl);
                     status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
                     console.log('✅ Открыто через tg.openTelegramLink');
                 } 
                 // Способ 2: через openLink
                 else if (typeof tg.openLink === 'function') {
-                    tg.openLink(tgLink);
+                    tg.openLink(authUrl);
                     status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
                     console.log('✅ Открыто через tg.openLink');
                 }
-                // Способ 3: запасной вариант
+                // Способ 3: схема tg://
                 else {
+                    const tgLink = 'tg://resolve?' + new URLSearchParams({
+                        domain: 'oauth.telegram.org',
+                        startauth: params.toString()
+                    });
                     window.location.href = tgLink;
                     status.textContent = '⏳ Переход на страницу авторизации...';
-                    console.log('✅ Переход через window.location');
+                    console.log('✅ Переход через tg://');
                 }
+
             } catch (e) {
-                console.warn('⚠️ Ошибка при открытии через Telegram:', e);
-                // Если все способы не сработали - открываем в новой вкладке
-                window.open('https://oauth.telegram.org/auth?' + params.toString(), '_blank');
+                console.warn('⚠️ Ошибка:', e);
+                // Запасной вариант: открываем через браузер (если ничего не работает)
+                window.open(authUrl, '_blank');
                 status.textContent = '✅ Окно открыто в браузере. Подтвердите вход.';
             }
 
@@ -172,7 +172,7 @@
             }, 5000);
         }
 
-        // Обработка возврата после авторизации (если вернулись в приложение)
+        // Обработка возврата после авторизации
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
@@ -182,17 +182,12 @@
                 const status = document.getElementById('status');
                 status.textContent = '✅ Авторизация успешна! Выполняется вход...';
                 
-                // Отправляем запрос на сервер MRKT (как в логах)
                 fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
                     code: code,
                     state: state
                 }), {
                     method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    }
+                    credentials: 'include'
                 })
                 .then(response => {
                     if (response.ok || response.status === 307 || response.status === 302) {
