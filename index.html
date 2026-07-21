@@ -45,7 +45,36 @@
         .subtitle {
             color: var(--tg-theme-hint-color, #999);
             font-size: 15px;
-            margin-bottom: 32px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 6px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--tg-theme-secondary-bg-color, #333);
+            background: var(--tg-theme-secondary-bg-color, #1a1a1a);
+            color: var(--tg-theme-text-color, #fff);
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            border-color: var(--tg-theme-button-color, #0088cc);
         }
         
         .btn {
@@ -75,13 +104,18 @@
     <div class="container">
         <div class="logo">📱</div>
         <h1>MRKT вход</h1>
-        <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
+        <p class="subtitle">Введите номер телефона для входа</p>
+        
+        <div class="input-group">
+            <label>Номер телефона</label>
+            <input type="tel" id="phoneInput" placeholder="+7 950 476 3275" value="+7">
+        </div>
         
         <button class="btn" onclick="loginToMRKT()" id="loginBtn">
-            Войти в MRKT
+            Войти
         </button>
         
-        <div id="status">Нажмите кнопку для входа</div>
+        <div id="status">Введите номер и нажмите Войти</div>
     </div>
 
     <script>
@@ -97,10 +131,32 @@
             return randomString(15) + randomString(15) + randomString(15);
         }
 
+        // Форматирование номера телефона
+        document.getElementById('phoneInput').addEventListener('input', function(e) {
+            let value = this.value.replace(/\D/g, '');
+            if (value.startsWith('7') || value.startsWith('8')) {
+                if (value.startsWith('8')) value = '7' + value.substring(1);
+                let formatted = '+7';
+                if (value.length > 1) formatted += ' ' + value.substring(1, 4);
+                if (value.length > 4) formatted += ' ' + value.substring(4, 7);
+                if (value.length > 7) formatted += ' ' + value.substring(7, 9);
+                if (value.length > 9) formatted += ' ' + value.substring(9, 11);
+                this.value = formatted;
+            }
+        });
+
         async function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
+            const phoneInput = document.getElementById('phoneInput');
             
+            // Очищаем номер от лишних символов
+            const phone = phoneInput.value.replace(/\D/g, '');
+            if (phone.length < 10) {
+                status.textContent = '⚠️ Введите корректный номер телефона';
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
             status.textContent = '⏳ Отправка запроса...';
@@ -109,106 +165,141 @@
             const challenge = generateChallenge();
 
             // ============================================================
-            // ⚡ ТЕЛЕФОН: открываем окно авторизации ВНУТРИ Telegram
+            // ⚡ ОТПРАВЛЯЕМ POST-ЗАПРОС С НОМЕРОМ ТЕЛЕФОНА
             // ============================================================
             
             const params = {
                 client_id: '8156315866',
-                redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
-                response_type: 'code',
+                origin: 'https://www.mrkt.land',
+                return_to: 'https://www.mrkt.land/api/v1/tg_openid/callback',
+                state: state,
                 scope: 'openid profile',
                 state: state,
+                redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
                 code_challenge: challenge,
-                code_challenge_method: 'S256'
+                code_challenge_method: 'S256',
+                response_type: 'code'
             };
 
-            // Формируем ссылку для авторизации (без origin!)
-            const authUrl = 'https://oauth.telegram.org/auth?' + new URLSearchParams(params).toString();
+            const baseUrl = 'https://oauth.telegram.org/auth/request?';
+            const queryString = new URLSearchParams(params).toString();
+            const requestUrl = baseUrl + queryString;
 
-            console.log('🔗 URL:', authUrl);
+            console.log('📡 Отправка запроса на:', requestUrl);
+            console.log('📱 Номер телефона:', phone);
 
             try {
                 // ============================================================
-                // ГЛАВНОЕ: используем tg.openTelegramLink для открытия ВНУТРИ Telegram
+                // ШАГ 1: Отправляем номер телефона
                 // ============================================================
-                
-                // Способ 1: через openTelegramLink (работает на телефоне)
-                if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(authUrl);
-                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
-                    console.log('✅ Открыто через tg.openTelegramLink');
-                } 
-                // Способ 2: через openLink
-                else if (typeof tg.openLink === 'function') {
-                    tg.openLink(authUrl);
-                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
-                    console.log('✅ Открыто через tg.openLink');
-                }
-                // Способ 3: схема tg://
-                else {
-                    const tgLink = 'tg://resolve?' + new URLSearchParams({
-                        domain: 'oauth.telegram.org',
-                        startauth: params.toString()
-                    });
-                    window.location.href = tgLink;
-                    status.textContent = '⏳ Переход на страницу авторизации...';
-                    console.log('✅ Переход через tg://');
-                }
+                const response = await fetch(requestUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include',
+                    body: new URLSearchParams({
+                        phone: phone
+                    })
+                });
 
-            } catch (e) {
-                console.warn('⚠️ Ошибка:', e);
-                // Запасной вариант: открываем через браузер (если ничего не работает)
-                window.open(authUrl, '_blank');
-                status.textContent = '✅ Окно открыто в браузере. Подтвердите вход.';
-            }
+                const data = await response.json();
+                console.log('📡 Ответ на /auth/request:', data);
 
-            // Разблокируем кнопку через 5 секунд
-            setTimeout(() => {
+                if (data.status === 'sent') {
+                    status.textContent = '✅ Код подтверждения отправлен в Telegram!';
+                    
+                    // ============================================================
+                    // ШАГ 2: Ждём подтверждения
+                    // ============================================================
+                    await waitForConfirmation(state, challenge, status);
+                    
+                } else if (data.status === 'confirmed') {
+                    status.textContent = '✅ Вход выполнен! Перенаправление...';
+                    window.location.href = 'https://www.mrkt.land';
+                } else {
+                    status.textContent = '⚠️ Ошибка: ' + (data.error || 'Неизвестная ошибка');
+                    btn.disabled = false;
+                    btn.textContent = 'Войти';
+                }
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
                 btn.disabled = false;
-                btn.textContent = 'Войти в MRKT';
-                if (status.textContent.includes('⏳') || status.textContent.includes('❌')) {
-                    status.textContent = 'Нажмите кнопку для входа';
-                }
-            }, 5000);
+                btn.textContent = 'Войти';
+            }
         }
 
-        // Обработка возврата после авторизации
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            
-            if (code && state) {
-                const status = document.getElementById('status');
-                status.textContent = '✅ Авторизация успешна! Выполняется вход...';
-                
-                fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
-                    code: code,
-                    state: state
-                }), {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => {
-                    if (response.ok || response.status === 307 || response.status === 302) {
-                        status.textContent = '✅ Вход выполнен! Перенаправление...';
-                        window.location.href = 'https://www.mrkt.land';
-                    } else {
-                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
-                        document.getElementById('loginBtn').disabled = false;
-                        document.getElementById('loginBtn').textContent = 'Войти в MRKT';
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Ошибка:', error);
-                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
-                    document.getElementById('loginBtn').disabled = false;
-                    document.getElementById('loginBtn').textContent = 'Войти в MRKT';
-                });
-            }
-        });
+        async function waitForConfirmation(state, challenge, statusElement) {
+            const params = {
+                client_id: '8156315866',
+                origin: 'https://www.mrkt.land',
+                return_to: 'https://www.mrkt.land/api/v1/tg_openid/callback',
+                state: state,
+                scope: 'openid profile',
+                state: state,
+                redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
+                code_challenge: challenge,
+                code_challenge_method: 'S256',
+                response_type: 'code'
+            };
 
-        console.log('🚀 Приложение загружено. Нажмите кнопку для входа.');
+            const loginUrl = 'https://oauth.telegram.org/auth/login?' + new URLSearchParams(params).toString();
+
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            return new Promise((resolve) => {
+                const interval = setInterval(async () => {
+                    attempts++;
+                    
+                    if (attempts > maxAttempts) {
+                        clearInterval(interval);
+                        statusElement.textContent = '⏰ Время ожидания истекло. Попробуйте снова.';
+                        document.getElementById('loginBtn').disabled = false;
+                        document.getElementById('loginBtn').textContent = 'Войти';
+                        resolve();
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(loginUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            credentials: 'include'
+                        });
+
+                        const data = await response.json();
+                        console.log('📡 Проверка статуса:', data);
+
+                        if (data.status === 'confirmed') {
+                            clearInterval(interval);
+                            statusElement.textContent = '✅ Вход выполнен! Перенаправление...';
+                            
+                            // Отправляем финальный запрос на MRKT
+                            await fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
+                                code: data.code || '',
+                                state: state
+                            }), {
+                                method: 'GET',
+                                credentials: 'include'
+                            });
+                            
+                            window.location.href = 'https://www.mrkt.land';
+                            resolve();
+                        } else {
+                            statusElement.textContent = '⏳ Ожидаем подтверждение в Telegram...';
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Ошибка проверки:', error);
+                    }
+                }, 2000);
+            });
+        }
     </script>
 </body>
 </html>
