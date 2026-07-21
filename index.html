@@ -2,9 +2,16 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>MRKT вход</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--tg-theme-bg-color, #0a0a0a);
@@ -12,45 +19,79 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
         }
+        
         .container {
             text-align: center;
             padding: 20px;
-            max-width: 320px;
+            max-width: 340px;
+            width: 100%;
         }
+        
         .logo {
-            font-size: 48px;
-            margin-bottom: 20px;
+            font-size: 56px;
+            margin-bottom: 16px;
         }
+        
         h1 {
             font-size: 24px;
-            margin-bottom: 10px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
         }
-        p {
+        
+        .subtitle {
             color: var(--tg-theme-hint-color, #999);
-            margin-bottom: 30px;
+            font-size: 15px;
+            margin-bottom: 32px;
+            line-height: 1.4;
         }
+        
         .btn {
             background: var(--tg-theme-button-color, #0088cc);
             color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
-            padding: 18px 30px;
+            padding: 16px 24px;
             border-radius: 12px;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.3s;
+            transition: opacity 0.2s, transform 0.1s;
             width: 100%;
+            -webkit-tap-highlight-color: transparent;
         }
+        
         .btn:active {
             opacity: 0.7;
+            transform: scale(0.97);
         }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         #status {
             margin-top: 20px;
             font-size: 14px;
             color: var(--tg-theme-hint-color, #666);
+            min-height: 20px;
+            transition: opacity 0.3s;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Стили для темной темы Telegram */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0a0a0a;
+            }
         }
     </style>
 </head>
@@ -58,32 +99,53 @@
     <div class="container">
         <div class="logo">🏠</div>
         <h1>MRKT вход</h1>
-        <p>Нажмите кнопку для входа через Telegram</p>
+        <p class="subtitle">Нажмите кнопку для входа<br>через Telegram</p>
+        
         <button class="btn" onclick="loginToMRKT()" id="loginBtn">
             Войти в MRKT
         </button>
+        
         <div id="status">Нажмите кнопку для входа</div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        // Инициализация Telegram WebApp
+        let tg;
+        try {
+            tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            console.log('✅ Telegram WebApp инициализирован');
+        } catch (e) {
+            console.warn('⚠️ Telegram WebApp не доступен (запуск вне Telegram)');
+            tg = null;
+        }
 
+        // Генерация случайной строки
+        function randomString(length = 10) {
+            return Math.random().toString(36).substring(2, 2 + length);
+        }
+
+        // Генерация code_challenge (для OAuth)
+        function generateChallenge() {
+            return randomString(15) + randomString(15) + randomString(15);
+        }
+
+        // Основная функция входа
         function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
             
+            // Блокируем кнопку, чтобы избежать повторных нажатий
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
             status.textContent = '⏳ Открываем окно авторизации...';
 
-            const state = Math.random().toString(36).substring(2, 15) + 
-                         Math.random().toString(36).substring(2, 15);
-            const challenge = Math.random().toString(36).substring(2, 15) +
-                            Math.random().toString(36).substring(2, 15) +
-                            Math.random().toString(36).substring(2, 15);
+            // Генерируем уникальные параметры
+            const state = randomString(12) + randomString(12);
+            const challenge = generateChallenge();
 
+            // Формируем URL для авторизации
             const authUrl = 
                 'https://oauth.telegram.org/auth?' +
                 'client_id=8156315866' +
@@ -94,46 +156,121 @@
                 '&code_challenge=' + challenge +
                 '&code_challenge_method=S256';
 
-            console.log('Opening auth URL:', authUrl);
+            console.log('🔗 URL авторизации:', authUrl);
 
-            // ПРОБУЕМ РАЗНЫЕ СПОСОБЫ ОДИН ЗА ДРУГИМ
+            // Пробуем разные способы открытия
+            let opened = false;
 
-            // Способ 1: открываем через Telegram WebApp
+            // Способ 1: через Telegram WebApp (работает внутри Telegram)
             try {
                 if (tg && typeof tg.openLink === 'function') {
                     tg.openLink(authUrl);
-                    status.textContent = '✅ Окно авторизации открыто!';
-                    btn.disabled = false;
-                    btn.textContent = 'Войти в MRKT';
-                    return;
+                    opened = true;
+                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
+                    console.log('✅ Открыто через tg.openLink');
+                } else if (tg && typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(authUrl);
+                    opened = true;
+                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
+                    console.log('✅ Открыто через tg.openTelegramLink');
                 }
             } catch (e) {
-                console.log('tg.openLink failed:', e);
+                console.warn('⚠️ Ошибка при открытии через Telegram:', e);
             }
 
-            // Способ 2: прямой переход (работает внутри Telegram!)
-            try {
-                window.location.href = authUrl;
-                // Если переход не произошел (заблокирован), разблокируем кнопку
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = 'Войти в MRKT';
-                    status.textContent = '⚠️ Проверьте, открылось ли окно авторизации';
-                }, 3000);
+            // Способ 2: через window.open (если способ 1 не сработал)
+            if (!opened) {
+                try {
+                    const newWindow = window.open(authUrl, '_blank');
+                    if (newWindow) {
+                        opened = true;
+                        status.textContent = '✅ Окно открыто в браузере. Подтвердите вход.';
+                        console.log('✅ Открыто через window.open');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Ошибка при открытии через window.open:', e);
+                }
+            }
+
+            // Способ 3: прямой переход (если ничего не сработало)
+            if (!opened) {
+                try {
+                    window.location.href = authUrl;
+                    opened = true;
+                    status.textContent = '⏳ Переход на страницу авторизации...';
+                    console.log('✅ Переход через window.location');
+                } catch (e) {
+                    console.warn('⚠️ Ошибка при переходе:', e);
+                }
+            }
+
+            // Если ничего не сработало — показываем ошибку
+            if (!opened) {
+                status.textContent = '❌ Не удалось открыть окно авторизации. Попробуйте позже.';
+                btn.disabled = false;
+                btn.textContent = 'Войти в MRKT';
                 return;
-            } catch (e) {
-                console.log('window.location failed:', e);
             }
 
-            // Способ 3: через iframe (экстренный случай)
-            const iframe = document.createElement('iframe');
-            iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;border:none;';
-            iframe.src = authUrl;
-            document.body.appendChild(iframe);
-            status.textContent = '✅ Если ничего не открылось, проверьте консоль (F12)';
-            btn.disabled = false;
-            btn.textContent = 'Войти в MRKT';
+            // Разблокируем кнопку через 5 секунд (на случай, если пользователь захочет нажать снова)
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = 'Войти в MRKT';
+                if (status.textContent.includes('⏳') || status.textContent.includes('❌')) {
+                    status.textContent = 'Нажмите кнопку для входа';
+                }
+            }, 5000);
+
+            // Автоматическое обновление статуса через 10 секунд
+            setTimeout(() => {
+                if (status.textContent.includes('⏳')) {
+                    status.textContent = '⏳ Если окно не открылось, нажмите кнопку еще раз';
+                }
+            }, 10000);
         }
+
+        // Обработка возврата в приложение после авторизации
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем, есть ли параметры в URL (возврат с авторизации)
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            
+            if (code && state) {
+                console.log('✅ Получен код авторизации:', code);
+                console.log('✅ State:', state);
+                
+                const status = document.getElementById('status');
+                status.textContent = '✅ Авторизация успешна! Выполняется вход...';
+                
+                // Отправляем код на сервер MRKT
+                fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
+                    code: code,
+                    state: state
+                }), {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        status.textContent = '✅ Вход выполнен! Перенаправление...';
+                        window.location.href = 'https://www.mrkt.land';
+                    } else {
+                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
+                        document.getElementById('loginBtn').disabled = false;
+                        document.getElementById('loginBtn').textContent = 'Войти в MRKT';
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Ошибка:', error);
+                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
+                    document.getElementById('loginBtn').disabled = false;
+                    document.getElementById('loginBtn').textContent = 'Войти в MRKT';
+                });
+            }
+        });
+
+        console.log('🚀 Приложение загружено. Нажмите кнопку для входа.');
     </script>
 </body>
 </html>
