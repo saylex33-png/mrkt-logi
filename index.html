@@ -40,14 +40,12 @@
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 8px;
-            letter-spacing: -0.5px;
         }
         
         .subtitle {
             color: var(--tg-theme-hint-color, #999);
             font-size: 15px;
             margin-bottom: 32px;
-            line-height: 1.4;
         }
         
         .btn {
@@ -59,39 +57,17 @@
             font-size: 17px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s, transform 0.1s;
             width: 100%;
-            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.2s;
         }
-        
-        .btn:active {
-            opacity: 0.7;
-            transform: scale(0.97);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .btn:active { opacity: 0.7; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #status {
             margin-top: 20px;
             font-size: 14px;
             color: var(--tg-theme-hint-color, #666);
             min-height: 20px;
-            transition: opacity 0.3s;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        /* Стили для темной темы Telegram */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background: #0a0a0a;
-            }
         }
     </style>
 </head>
@@ -99,7 +75,7 @@
     <div class="container">
         <div class="logo">🏠</div>
         <h1>MRKT вход</h1>
-        <p class="subtitle">Нажмите кнопку для входа<br>через Telegram</p>
+        <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
         
         <button class="btn" onclick="loginToMRKT()" id="loginBtn">
             Войти в MRKT
@@ -110,42 +86,26 @@
 
     <script>
         // Инициализация Telegram WebApp
-        let tg;
-        try {
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            console.log('✅ Telegram WebApp инициализирован');
-        } catch (e) {
-            console.warn('⚠️ Telegram WebApp не доступен (запуск вне Telegram)');
-            tg = null;
-        }
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
 
-        // Генерация случайной строки
-        function randomString(length = 10) {
-            return Math.random().toString(36).substring(2, 2 + length);
-        }
-
-        // Генерация code_challenge (для OAuth)
-        function generateChallenge() {
-            return randomString(15) + randomString(15) + randomString(15);
-        }
-
-        // Основная функция входа
         function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
             
-            // Блокируем кнопку, чтобы избежать повторных нажатий
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
             status.textContent = '⏳ Открываем окно авторизации...';
 
             // Генерируем уникальные параметры
-            const state = randomString(12) + randomString(12);
-            const challenge = generateChallenge();
+            const state = Math.random().toString(36).substring(2, 15) + 
+                         Math.random().toString(36).substring(2, 15);
+            const challenge = Math.random().toString(36).substring(2, 15) +
+                            Math.random().toString(36).substring(2, 15) +
+                            Math.random().toString(36).substring(2, 15);
 
-            // Формируем URL для авторизации
+            // ФОРМИРУЕМ ПРАВИЛЬНЫЙ URL
             const authUrl = 
                 'https://oauth.telegram.org/auth?' +
                 'client_id=8156315866' +
@@ -156,94 +116,48 @@
                 '&code_challenge=' + challenge +
                 '&code_challenge_method=S256';
 
-            console.log('🔗 URL авторизации:', authUrl);
+            console.log('🔗 URL:', authUrl);
 
-            // Пробуем разные способы открытия
-            let opened = false;
-
-            // Способ 1: через Telegram WebApp (работает внутри Telegram)
+            // =============================================
+            // ⚡ ГЛАВНЫЙ СЕКРЕТ: ИСПОЛЬЗУЕМ SWITCH INLINE QUERY
+            // =============================================
             try {
-                if (tg && typeof tg.openLink === 'function') {
+                // Этот метод гарантированно открывает окно ВНУТРИ Telegram
+                tg.switchInlineQuery('', {
+                    chat_types: ['users'],
+                    choose_chat: false
+                });
+
+                // Через 100мс открываем ссылку (это сработает как "запасной вариант")
+                setTimeout(() => {
                     tg.openLink(authUrl);
-                    opened = true;
-                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
-                    console.log('✅ Открыто через tg.openLink');
-                } else if (tg && typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(authUrl);
-                    opened = true;
-                    status.textContent = '✅ Окно открыто! Подтвердите вход в Telegram';
-                    console.log('✅ Открыто через tg.openTelegramLink');
-                }
+                }, 100);
+
+                status.textContent = '✅ Окно авторизации открыто!';
+                btn.disabled = false;
+                btn.textContent = 'Войти в MRKT';
+                
             } catch (e) {
-                console.warn('⚠️ Ошибка при открытии через Telegram:', e);
-            }
-
-            // Способ 2: через window.open (если способ 1 не сработал)
-            if (!opened) {
-                try {
-                    const newWindow = window.open(authUrl, '_blank');
-                    if (newWindow) {
-                        opened = true;
-                        status.textContent = '✅ Окно открыто в браузере. Подтвердите вход.';
-                        console.log('✅ Открыто через window.open');
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Ошибка при открытии через window.open:', e);
-                }
-            }
-
-            // Способ 3: прямой переход (если ничего не сработало)
-            if (!opened) {
-                try {
-                    window.location.href = authUrl;
-                    opened = true;
-                    status.textContent = '⏳ Переход на страницу авторизации...';
-                    console.log('✅ Переход через window.location');
-                } catch (e) {
-                    console.warn('⚠️ Ошибка при переходе:', e);
-                }
-            }
-
-            // Если ничего не сработало — показываем ошибку
-            if (!opened) {
-                status.textContent = '❌ Не удалось открыть окно авторизации. Попробуйте позже.';
+                console.warn('⚠️ SwitchInlineQuery не сработал, пробуем openLink:', e);
+                
+                // Если switch не сработал - просто открываем ссылку
+                tg.openLink(authUrl);
+                status.textContent = '✅ Окно авторизации открыто!';
                 btn.disabled = false;
                 btn.textContent = 'Войти в MRKT';
-                return;
             }
-
-            // Разблокируем кнопку через 5 секунд (на случай, если пользователь захочет нажать снова)
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.textContent = 'Войти в MRKT';
-                if (status.textContent.includes('⏳') || status.textContent.includes('❌')) {
-                    status.textContent = 'Нажмите кнопку для входа';
-                }
-            }, 5000);
-
-            // Автоматическое обновление статуса через 10 секунд
-            setTimeout(() => {
-                if (status.textContent.includes('⏳')) {
-                    status.textContent = '⏳ Если окно не открылось, нажмите кнопку еще раз';
-                }
-            }, 10000);
         }
 
-        // Обработка возврата в приложение после авторизации
+        // Обработка возврата из авторизации
         document.addEventListener('DOMContentLoaded', function() {
-            // Проверяем, есть ли параметры в URL (возврат с авторизации)
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const state = urlParams.get('state');
             
             if (code && state) {
-                console.log('✅ Получен код авторизации:', code);
-                console.log('✅ State:', state);
-                
                 const status = document.getElementById('status');
-                status.textContent = '✅ Авторизация успешна! Выполняется вход...';
+                status.textContent = '✅ Авторизация успешна!';
                 
-                // Отправляем код на сервер MRKT
                 fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
                     code: code,
                     state: state
@@ -253,24 +167,13 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        status.textContent = '✅ Вход выполнен! Перенаправление...';
+                        status.textContent = '✅ Вход выполнен!';
                         window.location.href = 'https://www.mrkt.land';
-                    } else {
-                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
-                        document.getElementById('loginBtn').disabled = false;
-                        document.getElementById('loginBtn').textContent = 'Войти в MRKT';
                     }
                 })
-                .catch(error => {
-                    console.error('❌ Ошибка:', error);
-                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
-                    document.getElementById('loginBtn').disabled = false;
-                    document.getElementById('loginBtn').textContent = 'Войти в MRKT';
-                });
+                .catch(error => console.error('❌ Ошибка:', error));
             }
         });
-
-        console.log('🚀 Приложение загружено. Нажмите кнопку для входа.');
     </script>
 </body>
 </html>
