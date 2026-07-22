@@ -83,24 +83,6 @@
             opacity: 0.8;
         }
 
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .btn:active::before {
-            width: 300px;
-            height: 300px;
-        }
-
         .btn-icon {
             display: inline-flex;
             align-items: center;
@@ -119,17 +101,12 @@
             color: #555;
         }
 
-        .footer a {
-            color: #0088cc;
-            text-decoration: none;
-        }
-
         .status {
             margin-top: 16px;
             font-size: 13px;
-            color: #666;
             min-height: 20px;
             transition: all 0.3s ease;
+            color: #666;
         }
 
         .status.loading {
@@ -144,14 +121,9 @@
             color: #ff4444;
         }
 
-        /* Анимация пульсации для кнопки во время загрузки */
         @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.6;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         .btn.loading {
@@ -159,7 +131,6 @@
             pointer-events: none;
         }
 
-        /* Темная тема для скролла */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -179,9 +150,8 @@
         <h1>MRKT вход</h1>
         <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
 
-        <button class="btn" id="loginBtn" onclick="loginToMRKT()">
+        <button class="btn" id="loginBtn">
             <span class="btn-icon">
-                <!-- Иконка Telegram -->
                 <svg viewBox="0 0 24 24">
                     <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                 </svg>
@@ -189,7 +159,7 @@
             </span>
         </button>
 
-        <div class="status" id="status"></div>
+        <div class="status" id="status">🔄 Нажмите кнопку для входа</div>
         <div class="footer">
             Безопасный вход через Telegram OAuth
         </div>
@@ -197,10 +167,8 @@
 
     <script>
         // ============================================================
-        // ПОЛНЫЙ РАБОЧИЙ КОД ДЛЯ ВХОДА В MRKT ЧЕРЕЗ TELEGRAM (БЕЗ БРАУЗЕРА)
+        // КОНФИГУРАЦИЯ
         // ============================================================
-
-        // --- Конфигурация ---
         const CLIENT_ID = '8156315866';
         const ORIGIN = 'https://www.mrkt.land';
         const REDIRECT_URI = 'https://www.mrkt.land/api/v1/tg_openid/callback';
@@ -208,11 +176,15 @@
         const CODE_CHALLENGE_METHOD = 'S256';
         const RESPONSE_TYPE = 'code';
 
-        // --- DOM элементы ---
+        // ============================================================
+        // DOM ЭЛЕМЕНТЫ
+        // ============================================================
         const loginBtn = document.getElementById('loginBtn');
         const statusEl = document.getElementById('status');
 
-        // --- Вспомогательные функции ---
+        // ============================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
         function generateRandomString(length = 32) {
             const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
             let result = '';
@@ -229,70 +201,81 @@
             }
         }
 
-        // --- Генерация параметров OAuth ---
         function generateOAuthParams() {
             const state = generateRandomString(16) + generateRandomString(16);
             const codeChallenge = generateRandomString(16) + generateRandomString(16) + generateRandomString(16);
             return { state, codeChallenge };
         }
 
-        // --- Формирование URL для авторизации ---
-        function buildAuthUrl(state, codeChallenge) {
-            const params = new URLSearchParams({
-                client_id: CLIENT_ID,
-                origin: ORIGIN,
-                return_to: REDIRECT_URI,
-                state: state,
-                scope: SCOPE,
-                redirect_uri: REDIRECT_URI,
-                code_challenge: codeChallenge,
-                code_challenge_method: CODE_CHALLENGE_METHOD,
-                response_type: RESPONSE_TYPE,
-                quick_auth: 'new'  // Ключевой параметр для быстрого входа
-            });
-            return 'https://oauth.telegram.org/auth/auth?' + params.toString();
-        }
-
         // ============================================================
-        // ОСНОВНАЯ ФУНКЦИЯ ВХОДА (работает внутри Telegram WebView)
+        // ГЛАВНАЯ ФУНКЦИЯ ВХОДА
         // ============================================================
         function loginToMRKT() {
-            // Блокируем кнопку, показываем статус
+            // Блокируем кнопку
             loginBtn.classList.add('loading');
-            setStatus('⏳ Отправляем запрос в Telegram...', 'loading');
+            setStatus('⏳ Генерация запроса...', 'loading');
 
             try {
                 // 1. Генерируем параметры
                 const { state, codeChallenge } = generateOAuthParams();
-                const authUrl = buildAuthUrl(state, codeChallenge);
+                
+                // 2. Формируем URL для авторизации (через /auth/auth)
+                const authUrl = 
+                    'https://oauth.telegram.org/auth/auth?' +
+                    'client_id=' + CLIENT_ID +
+                    '&origin=' + encodeURIComponent(ORIGIN) +
+                    '&return_to=' + encodeURIComponent(REDIRECT_URI) +
+                    '&state=' + state +
+                    '&scope=' + encodeURIComponent(SCOPE) +
+                    '&state=' + state +
+                    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
+                    '&code_challenge=' + codeChallenge +
+                    '&code_challenge_method=' + CODE_CHALLENGE_METHOD +
+                    '&response_type=' + RESPONSE_TYPE +
+                    '&quick_auth=new';
 
                 console.log('[MRKT] Auth URL:', authUrl);
 
-                // 2. Проверяем, запущено ли приложение внутри Telegram WebView
-                const isInTelegram = typeof window.TelegramWebviewProxy !== 'undefined';
-
-                if (isInTelegram) {
-                    // =============================================
-                    // РАБОТАЕТ ВНУТРИ TELEGRAM — БЕЗ БРАУЗЕРА!
-                    // =============================================
-                    setStatus('📱 Открываем окно авторизации...', 'loading');
+                // =============================================
+                // СПОСОБ 1: Через Telegram WebView (прямой вызов)
+                // =============================================
+                if (typeof window.TelegramWebviewProxy !== 'undefined') {
+                    setStatus('📱 Отправляем запрос в Telegram...', 'loading');
                     
-                    // Отправляем событие в Telegram, чтобы он сам открыл OAuth окно
-                    TelegramWebviewProxy.postEvent('oauth_request', JSON.stringify({ 
+                    // Отправляем событие в Telegram
+                    window.TelegramWebviewProxy.postEvent('oauth_request', JSON.stringify({ 
                         url: authUrl 
                     }));
 
                     setStatus('✅ Запрос отправлен, ждите подтверждение в Telegram', 'success');
                     
-                } else {
-                    // =============================================
-                    // ЗАПАСНОЙ ВАРИАНТ (для отладки в браузере)
-                    // =============================================
-                    setStatus('⚠️ Запущено не в Telegram, открываем в браузере', 'error');
+                    // Разблокируем кнопку через 3 секунды (на случай если что-то пошло не так)
+                    setTimeout(() => {
+                        loginBtn.classList.remove('loading');
+                    }, 3000);
                     
-                    // Открываем в новом окне как fallback
-                    window.open(authUrl, '_blank');
+                    return;
                 }
+
+                // =============================================
+                // СПОСОБ 2: Через deep link tg:// (работает всегда!)
+                // =============================================
+                // Используем тот же подход, что и в оригинальном oauth.js
+                // Сначала открываем страницу /auth, которая автоматически редиректит
+                const baseUrl = 
+                    'https://oauth.telegram.org/auth?' +
+                    'client_id=' + CLIENT_ID +
+                    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
+                    '&response_type=' + RESPONSE_TYPE +
+                    '&scope=' + encodeURIComponent(SCOPE) +
+                    '&state=' + state +
+                    '&code_challenge=' + codeChallenge +
+                    '&code_challenge_method=' + CODE_CHALLENGE_METHOD;
+
+                setStatus('📱 Открываем в Telegram...', 'loading');
+
+                // Открываем в том же окне (Telegram перехватит запрос)
+                window.location.href = baseUrl;
 
             } catch (error) {
                 console.error('[MRKT] Ошибка:', error);
@@ -302,26 +285,16 @@
         }
 
         // ============================================================
-        // ОБРАБОТКА ОТВЕТА ОТ TELEGRAM (после того как пользователь нажал "Войти")
+        // ОБРАБОТКА ОТВЕТА ОТ TELEGRAM
         // ============================================================
         async function receiveEvent(eventType, eventData) {
-            console.log('[MRKT] Получено событие от Telegram:', eventType, eventData);
-
-            if (eventType === 'oauth_supported') {
-                // Telegram подтвердил, что поддерживает OAuth
-                setStatus('✅ Telegram готов к авторизации', 'success');
-                loginBtn.classList.remove('loading');
-                return;
-            }
+            console.log('[MRKT] Событие от Telegram:', eventType, eventData);
 
             if (eventType === 'oauth_result_confirmed') {
-                // =============================================
-                // ПОЛЬЗОВАТЕЛЬ ПОДТВЕРДИЛ ВХОД!
-                // =============================================
-                setStatus('✅ Вход подтвержден, завершаем...', 'success');
+                setStatus('✅ Вход подтвержден!', 'success');
 
                 if (!eventData?.result_url) {
-                    setStatus('❌ Ошибка: нет URL результата', 'error');
+                    setStatus('❌ Ошибка: нет URL', 'error');
                     loginBtn.classList.remove('loading');
                     return;
                 }
@@ -336,9 +309,8 @@
                         return;
                     }
 
-                    setStatus('🔄 Получен токен, отправляем на сервер...', 'loading');
+                    setStatus('🔄 Отправляем токен на сервер...', 'loading');
 
-                    // Отправляем токен на сервер MRKT
                     const response = await fetch('/inapp?code=' + token);
                     const result = await response.json();
 
@@ -346,58 +318,48 @@
                         throw new Error(result.error || 'Неизвестная ошибка');
                     }
 
-                    setStatus('✅ Вход выполнен! Перенаправляем...', 'success');
+                    setStatus('✅ Вход выполнен!', 'success');
 
-                    // Переходим на страницу после входа
                     setTimeout(() => {
                         window.location.href = result.redirect;
                     }, 500);
 
                 } catch (error) {
-                    console.error('[MRKT] Ошибка при обработке входа:', error);
+                    console.error('[MRKT] Ошибка:', error);
                     setStatus('❌ Ошибка: ' + error.message, 'error');
                     loginBtn.classList.remove('loading');
                 }
             }
 
             if (eventType === 'oauth_result_cancelled') {
-                // Пользователь отклонил вход
-                setStatus('⛔ Вход отклонен пользователем', 'error');
+                setStatus('⛔ Вход отклонен', 'error');
                 loginBtn.classList.remove('loading');
             }
         }
 
         // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ ПРОКСИ ДЛЯ СВЯЗИ С TELEGRAM
+        // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
         function initTelegramProxy() {
             try {
-                // Проверяем, есть ли прокси от Telegram
                 if (typeof window.TelegramWebviewProxy !== 'undefined') {
-                    // Создаем объекты для связи
                     window.Telegram = window.Telegram || {};
-                    window.Telegram.WebView = {
-                        receiveEvent: receiveEvent
-                    };
-                    window.Telegram.TelegramGameProxy = {
-                        receiveEvent: receiveEvent
-                    };
-
-                    // Отправляем запрос на проверку поддержки OAuth
-                    TelegramWebviewProxy.postEvent('oauth_request', {});
-
-                    setStatus('📱 Telegram WebView подключен', 'loading');
-                    console.log('[MRKT] Прокси инициализирован успешно');
+                    window.Telegram.WebView = { receiveEvent };
+                    window.Telegram.TelegramGameProxy = { receiveEvent };
+                    
+                    // Проверяем поддержку
+                    window.TelegramWebviewProxy.postEvent('oauth_request', {});
+                    
+                    setStatus('📱 Режим Telegram WebView', 'loading');
+                    console.log('[MRKT] Прокси инициализирован');
                     return true;
                 } else {
-                    // Не в Telegram — используем браузерный режим
-                    console.log('[MRKT] Не в Telegram, браузерный режим');
                     setStatus('🌐 Браузерный режим', '');
+                    console.log('[MRKT] Не в Telegram');
                     return false;
                 }
             } catch (error) {
-                console.error('[MRKT] Ошибка инициализации прокси:', error);
-                setStatus('⚠️ Режим без Telegram WebView', '');
+                console.error('[MRKT] Ошибка инициализации:', error);
                 return false;
             }
         }
@@ -405,31 +367,30 @@
         // ============================================================
         // ЗАПУСК
         // ============================================================
-        // Инициализируем связь с Telegram при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
             const isInTelegram = initTelegramProxy();
-
-            // Если не в Telegram, даем знать пользователю
+            
             if (!isInTelegram) {
-                setStatus('🌐 Открыто в браузере. Вход через браузер.', '');
+                setStatus('🌐 Открыто в браузере', '');
             }
 
-            // Проверка, что кнопка не заблокирована
             loginBtn.classList.remove('loading');
-
-            console.log('[MRKT] Приложение готово к работе');
-            console.log('[MRKT] CLIENT_ID:', CLIENT_ID);
+            
+            // Назначаем обработчик клика
+            loginBtn.addEventListener('click', loginToMRKT);
+            
+            console.log('[MRKT] Приложение готово');
             console.log('[MRKT] Внутри Telegram:', isInTelegram);
         });
 
-        // Обработка ошибок
+        // Глобальная обработка ошибок
         window.onerror = function(msg, url, line, col, error) {
-            console.error('[MRKT] Глобальная ошибка:', msg, error);
+            console.error('[MRKT] Ошибка:', msg, error);
             setStatus('❌ Ошибка: ' + msg, 'error');
             loginBtn.classList.remove('loading');
         };
 
-        // Экспортируем функцию для кнопки
+        // Экспортируем функцию глобально
         window.loginToMRKT = loginToMRKT;
     </script>
 
