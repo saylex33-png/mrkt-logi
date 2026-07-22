@@ -6,12 +6,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>MRKT вход</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--tg-theme-bg-color, #0a0a0a);
@@ -23,44 +18,19 @@
             margin: 0;
             padding: 20px;
         }
-        
         .container {
             text-align: center;
             padding: 20px;
-            max-width: 400px;
+            max-width: 340px;
             width: 100%;
         }
-        
-        .logo {
-            font-size: 56px;
-            margin-bottom: 16px;
-        }
-        
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        
+        .logo { font-size: 56px; margin-bottom: 16px; }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
         .subtitle {
             color: var(--tg-theme-hint-color, #999);
             font-size: 15px;
             margin-bottom: 32px;
         }
-        
-        #telegram-login {
-            display: flex;
-            justify-content: center;
-            margin: 0 auto;
-        }
-        
-        #status {
-            margin-top: 16px;
-            font-size: 14px;
-            color: var(--tg-theme-hint-color, #666);
-            min-height: 20px;
-        }
-        
         .btn {
             background: var(--tg-theme-button-color, #0088cc);
             color: var(--tg-theme-button-text-color, #ffffff);
@@ -72,35 +42,38 @@
             cursor: pointer;
             width: 100%;
             transition: opacity 0.2s;
-            margin-top: 10px;
         }
         .btn:active { opacity: 0.7; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #status {
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #666);
+            min-height: 20px;
+            word-break: break-word;
+        }
+        .info {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a1a);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #666);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">📱</div>
+        <div class="logo">🖥️</div>
         <h1>MRKT вход</h1>
-        <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
-        
-        <!-- ============================================================
-        ⚡ TELEGRAM LOGIN WIDGET (работает без браузера!)
-        ============================================================ -->
-        <div id="telegram-login">
-            <script async src="https://telegram.org/js/telegram-widget.js?22"
-                data-telegram-login="asdASDDASadsadSADs_bot"
-                data-size="large"
-                data-auth-url="https://www.mrkt.land/api/v1/tg_openid/callback"
-                data-request-access="write">
-            </script>
-        </div>
-        
-        <button class="btn" onclick="manualLogin()" id="manualBtn">
-            Или войти вручную
+        <p class="subtitle">Нажмите кнопку, чтобы войти <br>на <strong>мой ПК</strong></p>
+
+        <button class="btn" onclick="loginToMRKT()" id="loginBtn">
+            Войти на ПК
         </button>
-        
+
         <div id="status">Нажмите кнопку для входа</div>
+        <div class="info" id="info">📡 Сервер: проверка соединения...</div>
     </div>
 
     <script>
@@ -109,119 +82,122 @@
         tg.expand();
 
         // ============================================================
-        // ⚡ ОБРАБОТКА РЕЗУЛЬТАТА ОТ WIDGET
+        // ⚡ ТВОЙ ПУБЛИЧНЫЙ АДРЕС (из ngrok)
         // ============================================================
-        window.onTelegramAuth = function(user) {
-            console.log('✅ Пользователь авторизован:', user);
-            document.getElementById('status').textContent = '✅ Вход выполнен! Перенаправление...';
-            
-            // Отправляем данные пользователя на сервер MRKT
-            fetch('https://www.mrkt.land/api/v1/tg_openid/callback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    username: user.username,
-                    photo_url: user.photo_url,
-                    auth_date: user.auth_date,
-                    hash: user.hash
-                })
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.href = 'https://www.mrkt.land';
-                } else {
-                    document.getElementById('status').textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
-                }
-            })
-            .catch(error => {
-                console.error('❌ Ошибка:', error);
-                document.getElementById('status').textContent = '❌ Ошибка соединения. Попробуйте снова.';
-            });
-        };
+        const SERVER_URL = 'https://cardigan-demise-overbite.ngrok-free.dev';
 
         // ============================================================
-        // ⚡ РУЧНОЙ ВХОД (запасной вариант)
+        // ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
         // ============================================================
-        function manualLogin() {
+        const user = tg.initDataUnsafe?.user || {};
+        const userId = user.id || '';
+        const username = user.username || '';
+
+        console.log('👤 Пользователь:', { userId, username });
+
+        // ============================================================
+        // ПРОВЕРКА СОЕДИНЕНИЯ
+        // ============================================================
+        async function checkConnection() {
+            const info = document.getElementById('info');
+            try {
+                const response = await fetch(SERVER_URL + '/ping');
+                if (response.ok) {
+                    info.textContent = '✅ Сервер доступен';
+                } else {
+                    info.textContent = '⚠️ Сервер недоступен';
+                }
+            } catch (e) {
+                info.textContent = '❌ Сервер недоступен. Убедись, что ngrok запущен!';
+            }
+        }
+        checkConnection();
+
+        // ============================================================
+        // ОСНОВНАЯ ФУНКЦИЯ
+        // ============================================================
+        async function loginToMRKT() {
+            const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
-            const btn = document.getElementById('manualBtn');
-            
+
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
-            status.textContent = '⏳ Открываем окно авторизации...';
+            status.textContent = '⏳ Отправка запроса на ПК...';
 
-            const state = Math.random().toString(36).substring(2, 15) + 
-                         Math.random().toString(36).substring(2, 15);
-            const challenge = Math.random().toString(36).substring(2, 15) +
-                            Math.random().toString(36).substring(2, 15) +
-                            Math.random().toString(36).substring(2, 15);
+            try {
+                const response = await fetch(SERVER_URL + '/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        username: username || 'Пользователь'
+                    })
+                });
 
-            const params = new URLSearchParams({
-                client_id: '8156315866',
-                redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
-                response_type: 'code',
-                scope: 'openid profile',
-                state: state,
-                code_challenge: challenge,
-                code_challenge_method: 'S256'
-            });
+                const data = await response.json();
+                console.log('📡 Ответ сервера:', data);
 
-            const authUrl = 'https://oauth.telegram.org/auth?' + params.toString();
-            
-            // Открываем через window.open (может открыть браузер)
-            window.open(authUrl, '_blank');
-            
-            status.textContent = '✅ Окно открыто! Подтвердите вход.';
-            
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.textContent = 'Или войти вручную';
-            }, 5000);
+                if (data.status === 'sent') {
+                    status.textContent = '✅ Запрос отправлен! Подтвердите вход в Telegram на телефоне.';
+                    await waitForConfirmation(data.state, status);
+                } else if (data.status === 'confirmed') {
+                    status.textContent = '✅ Вход выполнен!';
+                    window.location.href = 'https://www.mrkt.land';
+                } else {
+                    status.textContent = '⚠️ Ошибка: ' + (data.error || 'Неизвестная ошибка');
+                }
+
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                status.textContent = '❌ Ошибка соединения с ПК-сервером. Убедитесь, что ngrok запущен!';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Войти на ПК';
         }
 
-        // ============================================================
-        // ⚡ ПЕРЕХВАТЫВАЕМ ВОЗВРАТ С CODE И STATE
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            
-            if (code && state) {
-                const status = document.getElementById('status');
-                status.textContent = '✅ Авторизация успешна! Выполняется вход...';
-                
-                fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
-                    code: code,
-                    state: state
-                }), {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => {
-                    if (response.ok || response.status === 307 || response.status === 302) {
-                        status.textContent = '✅ Вход выполнен! Перенаправление...';
-                        window.location.href = 'https://www.mrkt.land';
-                    } else {
-                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
-                        document.getElementById('manualBtn').disabled = false;
-                        document.getElementById('manualBtn').textContent = 'Или войти вручную';
+        async function waitForConfirmation(state, statusElement) {
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            return new Promise((resolve) => {
+                const interval = setInterval(async () => {
+                    attempts++;
+
+                    if (attempts > maxAttempts) {
+                        clearInterval(interval);
+                        statusElement.textContent = '⏰ Время ожидания истекло. Попробуйте снова.';
+                        resolve();
+                        return;
                     }
-                })
-                .catch(error => {
-                    console.error('❌ Ошибка:', error);
-                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
-                    document.getElementById('manualBtn').disabled = false;
-                    document.getElementById('manualBtn').textContent = 'Или войти вручную';
-                });
-            }
-        });
+
+                    try {
+                        const response = await fetch(SERVER_URL + '/check', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ state: state })
+                        });
+
+                        const data = await response.json();
+                        console.log('📡 Проверка статуса:', data);
+
+                        if (data.status === 'confirmed') {
+                            clearInterval(interval);
+                            statusElement.textContent = '✅ Вход выполнен!';
+                            resolve();
+                        } else {
+                            statusElement.textContent = '⏳ Ожидаем подтверждение на телефоне... (' + attempts + '/' + maxAttempts + ')';
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Ошибка проверки:', error);
+                    }
+                }, 2000);
+            });
+        }
     </script>
 </body>
 </html>
