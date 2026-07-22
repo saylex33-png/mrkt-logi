@@ -127,19 +127,20 @@
             console.log('🔗 Открываем URL:', authUrl);
 
             // ============================================================
-            // ⚡ ПРЯМОЙ ПЕРЕХОД (работает внутри Telegram WebView!)
+            // ⚡ ОТКРЫВАЕМ В НОВОМ ОКНЕ (чтобы не блокировать WebView)
             // ============================================================
             
             try {
-                // Самый надежный способ - прямой переход
-                window.location.href = authUrl;
+                // Открываем в новом окне (внутри Telegram это будет новое WebView)
+                const newWindow = window.open(authUrl, '_blank');
                 
-                // Если через 3 секунды ничего не произошло - разблокируем кнопку
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = 'Войти в MRKT';
-                    status.textContent = '⚠️ Если окно не открылось, нажмите снова';
-                }, 3000);
+                if (newWindow) {
+                    status.textContent = '✅ Окно авторизации открыто! Подтвердите вход.';
+                } else {
+                    // Если блокирует popup - делаем прямой переход
+                    window.location.href = authUrl;
+                    status.textContent = '⏳ Переход на страницу авторизации...';
+                }
 
             } catch (error) {
                 console.error('❌ Ошибка:', error);
@@ -147,6 +148,12 @@
                 btn.disabled = false;
                 btn.textContent = 'Войти в MRKT';
             }
+
+            // Разблокируем кнопку через 5 секунд
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = 'Войти в MRKT';
+            }, 5000);
         }
 
         // ============================================================
