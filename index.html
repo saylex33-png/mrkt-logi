@@ -103,15 +103,11 @@
             
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
-            status.textContent = '⏳ Отправка запроса...';
+            status.textContent = '⏳ Получение qtoken...';
 
             const state = randomString(12) + randomString(12);
             const challenge = generateChallenge();
 
-            // ============================================================
-            // ⚡ ГЛАВНЫЙ ЗАПРОС: как в способе №1, но с quick_auth
-            // ============================================================
-            
             const params = {
                 client_id: '8156315866',
                 origin: 'https://www.mrkt.land',
@@ -125,29 +121,78 @@
                 response_type: 'code'
             };
 
-            // Сначала открываем страницу авторизации (чтобы получить qtoken)
-            const authUrl = 'https://oauth.telegram.org/auth?' + new URLSearchParams(params).toString();
-            
             try {
-                // Открываем страницу авторизации внутри Telegram (без браузера!)
-                if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(authUrl);
-                } else if (typeof tg.openLink === 'function') {
-                    tg.openLink(authUrl);
-                } else {
-                    window.open(authUrl, '_blank');
+                // ============================================================
+                // ШАГ 1: Получаем qtoken через POST /auth/request
+                // ============================================================
+                const requestUrl = 'https://oauth.telegram.org/auth/request?' + new URLSearchParams(params).toString();
+                
+                console.log('📡 Шаг 1: Получение qtoken...');
+                
+                const requestResponse = await fetch(requestUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include'
+                });
+
+                const requestData = await requestResponse.text();
+                console.log('📡 Ответ /auth/request:', requestData);
+
+                // qtoken приходит как plain text
+                const qtoken = requestData.replace(/["']/g, '');
+                console.log('✅ qtoken получен:', qtoken);
+
+                if (!qtoken || qtoken.length < 10) {
+                    throw new Error('Не удалось получить qtoken');
                 }
 
-                status.textContent = '⏳ Ожидаем подтверждение...';
+                status.textContent = '⏳ Отправка запроса на авторизацию...';
 
                 // ============================================================
-                // Ждём, пока пользователь подтвердит вход
+                // ШАГ 2: Отправляем POST /auth/login с qtoken
                 // ============================================================
-                await waitForConfirmation(state, challenge, status);
+                const loginUrl = 'https://oauth.telegram.org/auth/login?' + new URLSearchParams({
+                    ...params,
+                    qtoken: qtoken
+                }).toString();
+
+                console.log('📡 Шаг 2: Отправка qtoken...');
+
+                const loginResponse = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include'
+                });
+
+                const loginData = await loginResponse.json();
+                console.log('📡 Ответ /auth/login:', loginData);
+
+                if (loginData.status === 'waiting') {
+                    status.textContent = '✅ Ожидаем подтверждение в Telegram...';
+                    
+                    // ============================================================
+                    // ШАГ 3: Ждём подтверждения
+                    // ============================================================
+                    await waitForConfirmation(state, challenge, status);
+                    
+                } else if (loginData.status === 'confirmed') {
+                    status.textContent = '✅ Вход выполнен! Перенаправление...';
+                    window.location.href = 'https://www.mrkt.land';
+                } else {
+                    status.textContent = '⚠️ Ошибка: ' + (loginData.error || 'Неизвестная ошибка');
+                    btn.disabled = false;
+                    btn.textContent = 'Войти в MRKT';
+                }
 
             } catch (error) {
                 console.error('❌ Ошибка:', error);
-                status.textContent = '❌ Ошибка. Попробуйте снова.';
+                status.textContent = '❌ Ошибка: ' + error.message;
                 btn.disabled = false;
                 btn.textContent = 'Войти в MRKT';
             }
@@ -167,7 +212,7 @@
                 response_type: 'code'
             };
 
-            const loginUrl = 'https://oauth.telegram.org/auth/login?' + new URLSearchParams(params).toString();
+            const checkUrl = 'https://oauth.telegram.org/auth/login?' + new URLSearchParams(params).toString();
 
             let attempts = 0;
             const maxAttempts = 30;
@@ -186,7 +231,7 @@
                     }
 
                     try {
-                        const response = await fetch(loginUrl, {
+                        const response = await fetch(checkUrl, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -205,12 +250,9 @@
                             resolve();
                         } else if (data.status === 'consumed') {
                             clearInterval(interval);
-                            statusElement.textContent = '✅ Код уже использован. Попробуйте снова.';
-                            document.getElementById('loginBtn').disabled = false;
-                            document.getElementById('loginBtn').textContent = 'Войти в MRKT';
-                            resolve();
+                            statusElement.textContent = '⏳ Код уже использован. Повторная проверка...';
                         } else {
-                            statusElement.textContent = '⏳ Ожидаем подтверждение в Telegram...';
+                            statusElement.textContent = '⏳ Ожидаем подтверждение в Telegram... (' + attempts + '/' + maxAttempts + ')';
                         }
                     } catch (error) {
                         console.warn('⚠️ Ошибка проверки:', error);
