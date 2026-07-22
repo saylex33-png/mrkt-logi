@@ -2,61 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MRKT вход</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в MRKT (без браузера)</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            height: 100vh;
+            margin: 0;
             background: #0a0a0a;
-            color: #ffffff;
-            padding: 20px;
-            user-select: none;
+            color: #fff;
         }
-
         .container {
             text-align: center;
-            max-width: 380px;
+            padding: 20px;
             width: 100%;
-            padding: 30px 20px;
-            background: #141414;
-            border-radius: 24px;
-            border: 1px solid #2a2a2a;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            max-width: 320px;
         }
-
-        .logo {
-            font-size: 48px;
-            margin-bottom: 16px;
-            display: block;
-        }
-
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #0088cc, #00aaff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .subtitle {
-            color: #888;
+        .status {
+            margin-bottom: 20px;
             font-size: 14px;
-            margin-bottom: 32px;
-            line-height: 1.5;
+            color: #aaa;
         }
-
         .btn {
             background: #0088cc;
             color: #fff;
@@ -66,333 +35,68 @@
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: opacity 0.3s;
             width: 100%;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 136, 204, 0.3);
         }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 136, 204, 0.4);
-        }
-
-        .btn:active {
-            transform: scale(0.97);
-            opacity: 0.8;
-        }
-
-        .btn-icon {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-
-        .footer {
-            margin-top: 24px;
-            font-size: 12px;
-            color: #555;
-        }
-
-        .status {
-            margin-top: 16px;
-            font-size: 13px;
-            min-height: 20px;
-            transition: all 0.3s ease;
-            color: #666;
-        }
-
-        .status.loading {
-            color: #0088cc;
-        }
-
-        .status.success {
-            color: #00cc88;
-        }
-
-        .status.error {
-            color: #ff4444;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .btn.loading {
-            animation: pulse 1.5s ease-in-out infinite;
-            pointer-events: none;
-        }
-
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #141414;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #2a2a2a;
-            border-radius: 4px;
-        }
+        .btn:hover { opacity: 0.9; }
+        .btn:active { opacity: 0.7; }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <span class="logo">🏠</span>
-        <h1>MRKT вход</h1>
-        <p class="subtitle">Нажмите кнопку для входа через Telegram</p>
-
-        <button class="btn" id="loginBtn">
-            <span class="btn-icon">
-                <svg viewBox="0 0 24 24">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                </svg>
-                Войти в MRKT
-            </span>
-        </button>
-
-        <div class="status" id="status">🔄 Нажмите кнопку для входа</div>
-        <div class="footer">
-            Безопасный вход через Telegram OAuth
-        </div>
+        <h1>🏠 MRKT вход</h1>
+        <p class="status" id="status-text">Готов к авторизации</p>
+        <button class="btn" id="loginBtn">Войти в MRKT</button>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // ============================================================
-        // КОНФИГУРАЦИЯ
-        // ============================================================
-        const CLIENT_ID = '8156315866';
-        const ORIGIN = 'https://www.mrkt.land';
-        const REDIRECT_URI = 'https://www.mrkt.land/api/v1/tg_openid/callback';
-        const SCOPE = 'openid profile';
-        const CODE_CHALLENGE_METHOD = 'S256';
-        const RESPONSE_TYPE = 'code';
-
-        // ============================================================
-        // DOM ЭЛЕМЕНТЫ
-        // ============================================================
-        const loginBtn = document.getElementById('loginBtn');
-        const statusEl = document.getElementById('status');
-
-        // ============================================================
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        // ============================================================
-        function generateRandomString(length = 32) {
-            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
-
-        function setStatus(text, type = '') {
-            if (statusEl) {
-                statusEl.textContent = text;
-                statusEl.className = 'status ' + type;
-            }
-        }
-
-        function generateOAuthParams() {
-            const state = generateRandomString(16) + generateRandomString(16);
-            const codeChallenge = generateRandomString(16) + generateRandomString(16) + generateRandomString(16);
-            return { state, codeChallenge };
-        }
-
-        // ============================================================
-        // ГЛАВНАЯ ФУНКЦИЯ ВХОДА
-        // ============================================================
-        function loginToMRKT() {
-            // Блокируем кнопку
-            loginBtn.classList.add('loading');
-            setStatus('⏳ Генерация запроса...', 'loading');
-
-            try {
-                // 1. Генерируем параметры
-                const { state, codeChallenge } = generateOAuthParams();
-                
-                // 2. Формируем URL для авторизации (через /auth/auth)
-                const authUrl = 
-                    'https://oauth.telegram.org/auth/auth?' +
-                    'client_id=' + CLIENT_ID +
-                    '&origin=' + encodeURIComponent(ORIGIN) +
-                    '&return_to=' + encodeURIComponent(REDIRECT_URI) +
-                    '&state=' + state +
-                    '&scope=' + encodeURIComponent(SCOPE) +
-                    '&state=' + state +
-                    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-                    '&code_challenge=' + codeChallenge +
-                    '&code_challenge_method=' + CODE_CHALLENGE_METHOD +
-                    '&response_type=' + RESPONSE_TYPE +
-                    '&quick_auth=new';
-
-                console.log('[MRKT] Auth URL:', authUrl);
-
-                // =============================================
-                // СПОСОБ 1: Через Telegram WebView (прямой вызов)
-                // =============================================
-                if (typeof window.TelegramWebviewProxy !== 'undefined') {
-                    setStatus('📱 Отправляем запрос в Telegram...', 'loading');
-                    
-                    // Отправляем событие в Telegram
-                    window.TelegramWebviewProxy.postEvent('oauth_request', JSON.stringify({ 
-                        url: authUrl 
-                    }));
-
-                    setStatus('✅ Запрос отправлен, ждите подтверждение в Telegram', 'success');
-                    
-                    // Разблокируем кнопку через 3 секунды (на случай если что-то пошло не так)
-                    setTimeout(() => {
-                        loginBtn.classList.remove('loading');
-                    }, 3000);
-                    
-                    return;
-                }
-
-                // =============================================
-                // СПОСОБ 2: Через deep link tg:// (работает всегда!)
-                // =============================================
-                // Используем тот же подход, что и в оригинальном oauth.js
-                // Сначала открываем страницу /auth, которая автоматически редиректит
-                const baseUrl = 
-                    'https://oauth.telegram.org/auth?' +
-                    'client_id=' + CLIENT_ID +
-                    '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
-                    '&response_type=' + RESPONSE_TYPE +
-                    '&scope=' + encodeURIComponent(SCOPE) +
-                    '&state=' + state +
-                    '&code_challenge=' + codeChallenge +
-                    '&code_challenge_method=' + CODE_CHALLENGE_METHOD;
-
-                setStatus('📱 Открываем в Telegram...', 'loading');
-
-                // Открываем в том же окне (Telegram перехватит запрос)
-                window.location.href = baseUrl;
-
-            } catch (error) {
-                console.error('[MRKT] Ошибка:', error);
-                setStatus('❌ Ошибка: ' + error.message, 'error');
-                loginBtn.classList.remove('loading');
-            }
-        }
-
-        // ============================================================
-        // ОБРАБОТКА ОТВЕТА ОТ TELEGRAM
-        // ============================================================
-        async function receiveEvent(eventType, eventData) {
-            console.log('[MRKT] Событие от Telegram:', eventType, eventData);
-
-            if (eventType === 'oauth_result_confirmed') {
-                setStatus('✅ Вход подтвержден!', 'success');
-
-                if (!eventData?.result_url) {
-                    setStatus('❌ Ошибка: нет URL', 'error');
-                    loginBtn.classList.remove('loading');
-                    return;
-                }
-
-                try {
-                    const url = new URL(eventData.result_url);
-                    const token = url.searchParams.get('token');
-
-                    if (!token) {
-                        setStatus('❌ Ошибка: нет токена', 'error');
-                        loginBtn.classList.remove('loading');
-                        return;
-                    }
-
-                    setStatus('🔄 Отправляем токен на сервер...', 'loading');
-
-                    const response = await fetch('/inapp?code=' + token);
-                    const result = await response.json();
-
-                    if (!result.redirect) {
-                        throw new Error(result.error || 'Неизвестная ошибка');
-                    }
-
-                    setStatus('✅ Вход выполнен!', 'success');
-
-                    setTimeout(() => {
-                        window.location.href = result.redirect;
-                    }, 500);
-
-                } catch (error) {
-                    console.error('[MRKT] Ошибка:', error);
-                    setStatus('❌ Ошибка: ' + error.message, 'error');
-                    loginBtn.classList.remove('loading');
-                }
-            }
-
-            if (eventType === 'oauth_result_cancelled') {
-                setStatus('⛔ Вход отклонен', 'error');
-                loginBtn.classList.remove('loading');
-            }
-        }
-
-        // ============================================================
-        // ИНИЦИАЛИЗАЦИЯ
-        // ============================================================
-        function initTelegramProxy() {
-            try {
-                if (typeof window.TelegramWebviewProxy !== 'undefined') {
-                    window.Telegram = window.Telegram || {};
-                    window.Telegram.WebView = { receiveEvent };
-                    window.Telegram.TelegramGameProxy = { receiveEvent };
-                    
-                    // Проверяем поддержку
-                    window.TelegramWebviewProxy.postEvent('oauth_request', {});
-                    
-                    setStatus('📱 Режим Telegram WebView', 'loading');
-                    console.log('[MRKT] Прокси инициализирован');
-                    return true;
-                } else {
-                    setStatus('🌐 Браузерный режим', '');
-                    console.log('[MRKT] Не в Telegram');
-                    return false;
-                }
-            } catch (error) {
-                console.error('[MRKT] Ошибка инициализации:', error);
-                return false;
-            }
-        }
-
-        // ============================================================
-        // ЗАПУСК
-        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            const isInTelegram = initTelegramProxy();
-            
-            if (!isInTelegram) {
-                setStatus('🌐 Открыто в браузере', '');
+            var loginBtn = document.getElementById('loginBtn');
+            var statusEl = document.getElementById('status-text');
+
+            // Проверяем, что запущено внутри Telegram
+            if (!window.Telegram || !window.Telegram.WebApp) {
+                statusEl.textContent = 'Ошибка: открой в Telegram WebApp';
+                loginBtn.style.display = 'none';
+                return;
             }
 
-            loginBtn.classList.remove('loading');
-            
-            // Назначаем обработчик клика
-            loginBtn.addEventListener('click', loginToMRKT);
-            
-            console.log('[MRKT] Приложение готово');
-            console.log('[MRKT] Внутри Telegram:', isInTelegram);
+            // Инициализируем WebApp
+            var tg = window.Telegram.WebApp;
+            tg.ready();
+
+            loginBtn.addEventListener('click', function() {
+                statusEl.textContent = 'Запрашиваем авторизацию...';
+                
+                // Генерируем случайные параметры
+                var state = Math.random().toString(36).substring(2, 15) + 
+                            Math.random().toString(36).substring(2, 15);
+                
+                var challenge = Math.random().toString(36).substring(2, 15) +
+                              Math.random().toString(36).substring(2, 15) +
+                              Math.random().toString(36).substring(2, 15);
+
+                // Формируем URL для OAuth (тот самый, с quick_auth)
+                var oauthUrl = 'https://oauth.telegram.org/auth/auth?' +
+                    'client_id=8156315866' +
+                    '&origin=https%3A%2F%2Fwww.mrkt.land' +
+                    '&return_to=https%3A%2F%2Fwww.mrkt.land%2Fapi%2Fv1%2Ftg_openid%2Fcallback' +
+                    '&state=' + state +
+                    '&scope=openid%20profile' +
+                    '&redirect_uri=https%3A%2F%2Fwww.mrkt.land%2Fapi%2Fv1%2Ftg_openid%2Fcallback' +
+                    '&code_challenge=' + challenge +
+                    '&code_challenge_method=S256' +
+                    '&response_type=code' +
+                    '&quick_auth=new'; // ← вот эта магия!
+
+                // ВАЖНЕЙШИЙ МОМЕНТ: открываем через Mini Apps метод
+                // Это НЕ откроет браузер, а покажет окно подтверждения
+                tg.openTelegramLink(oauthUrl);
+                
+                statusEl.textContent = 'Ожидаем подтверждения...';
+            });
         });
-
-        // Глобальная обработка ошибок
-        window.onerror = function(msg, url, line, col, error) {
-            console.error('[MRKT] Ошибка:', msg, error);
-            setStatus('❌ Ошибка: ' + msg, 'error');
-            loginBtn.classList.remove('loading');
-        };
-
-        // Экспортируем функцию глобально
-        window.loginToMRKT = loginToMRKT;
     </script>
-
 </body>
 </html>
