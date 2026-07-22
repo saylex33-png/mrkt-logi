@@ -50,15 +50,6 @@
             font-size: 14px;
             color: var(--tg-theme-hint-color, #666);
             min-height: 20px;
-            word-break: break-word;
-        }
-        .info {
-            margin-top: 12px;
-            padding: 10px;
-            background: var(--tg-theme-secondary-bg-color, #1a1a1a);
-            border-radius: 8px;
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #666);
         }
     </style>
 </head>
@@ -66,14 +57,13 @@
     <div class="container">
         <div class="logo">🖥️</div>
         <h1>MRKT вход</h1>
-        <p class="subtitle">Нажмите кнопку, чтобы войти <br>на <strong>мой ПК</strong></p>
+        <p class="subtitle">Нажмите кнопку для входа <br>на <strong>ПК</strong></p>
 
         <button class="btn" onclick="loginToMRKT()" id="loginBtn">
             Войти на ПК
         </button>
 
         <div id="status">Нажмите кнопку для входа</div>
-        <div class="info" id="info">📡 Сервер: проверка соединения...</div>
     </div>
 
     <script>
@@ -81,123 +71,97 @@
         tg.ready();
         tg.expand();
 
-        // ============================================================
-        // ⚡ ТВОЙ ПУБЛИЧНЫЙ АДРЕС (из ngrok)
-        // ============================================================
-        const SERVER_URL = 'https://cardigan-demise-overbite.ngrok-free.dev';
-
-        // ============================================================
-        // ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
-        // ============================================================
-        const user = tg.initDataUnsafe?.user || {};
-        const userId = user.id || '';
-        const username = user.username || '';
-
-        console.log('👤 Пользователь:', { userId, username });
-
-        // ============================================================
-        // ПРОВЕРКА СОЕДИНЕНИЯ
-        // ============================================================
-        async function checkConnection() {
-            const info = document.getElementById('info');
-            try {
-                const response = await fetch(SERVER_URL + '/ping');
-                if (response.ok) {
-                    info.textContent = '✅ Сервер доступен';
-                } else {
-                    info.textContent = '⚠️ Сервер недоступен';
-                }
-            } catch (e) {
-                info.textContent = '❌ Сервер недоступен. Убедись, что ngrok запущен!';
-            }
+        function randomString(length) {
+            return Math.random().toString(36).substring(2, 2 + length);
         }
-        checkConnection();
 
-        // ============================================================
-        // ОСНОВНАЯ ФУНКЦИЯ
-        // ============================================================
-        async function loginToMRKT() {
+        function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
 
             btn.disabled = true;
             btn.textContent = 'Загрузка...';
-            status.textContent = '⏳ Отправка запроса на ПК...';
+            status.textContent = '⏳ Отправка запроса...';
 
+            const state = randomString(12) + randomString(12);
+            const challenge = randomString(15) + randomString(15) + randomString(15);
+
+            // ============================================================
+            // ⚡ ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ (как у друга)
+            // ============================================================
+            const params = new URLSearchParams({
+                client_id: '8156315866',
+                origin: 'https://www.mrkt.land',           // ← СЕССИЯ НА ПК!
+                return_to: 'https://www.mrkt.land/api/v1/tg_openid/callback',
+                state: state,
+                scope: 'openid profile',
+                state: state,
+                redirect_uri: 'https://www.mrkt.land/api/v1/tg_openid/callback',
+                code_challenge: challenge,
+                code_challenge_method: 'S256',
+                response_type: 'code'
+            });
+
+            const authUrl = 'https://oauth.telegram.org/auth?' + params.toString();
+
+            console.log('🔗 Открываем:', authUrl);
+
+            // ============================================================
+            // ОТКРЫВАЕМ ССЫЛКУ ВНУТРИ TELEGRAM
+            // ============================================================
             try {
-                const response = await fetch(SERVER_URL + '/auth', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userId: userId,
-                        username: username || 'Пользователь'
-                    })
-                });
-
-                const data = await response.json();
-                console.log('📡 Ответ сервера:', data);
-
-                if (data.status === 'sent') {
-                    status.textContent = '✅ Запрос отправлен! Подтвердите вход в Telegram на телефоне.';
-                    await waitForConfirmation(data.state, status);
-                } else if (data.status === 'confirmed') {
-                    status.textContent = '✅ Вход выполнен!';
-                    window.location.href = 'https://www.mrkt.land';
-                } else {
-                    status.textContent = '⚠️ Ошибка: ' + (data.error || 'Неизвестная ошибка');
-                }
-
-            } catch (error) {
-                console.error('❌ Ошибка:', error);
-                status.textContent = '❌ Ошибка соединения с ПК-сервером. Убедитесь, что ngrok запущен!';
+                // Прямой переход внутри Telegram (без браузера!)
+                tg.openLink(authUrl);
+                status.textContent = '✅ Окно открыто! Подтвердите вход.';
+            } catch (e) {
+                // Запасной вариант
+                window.open(authUrl, '_blank');
+                status.textContent = '✅ Окно открыто! Подтвердите вход.';
             }
 
-            btn.disabled = false;
-            btn.textContent = 'Войти на ПК';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = 'Войти на ПК';
+            }, 5000);
         }
 
-        async function waitForConfirmation(state, statusElement) {
-            let attempts = 0;
-            const maxAttempts = 30;
+        // ============================================================
+        // ПЕРЕХВАТ РЕДИРЕКТА
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
 
-            return new Promise((resolve) => {
-                const interval = setInterval(async () => {
-                    attempts++;
+            if (code && state) {
+                const status = document.getElementById('status');
+                status.textContent = '✅ Авторизация успешна!';
 
-                    if (attempts > maxAttempts) {
-                        clearInterval(interval);
-                        statusElement.textContent = '⏰ Время ожидания истекло. Попробуйте снова.';
-                        resolve();
-                        return;
+                fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
+                    code: code,
+                    state: state
+                }), {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (response.ok || response.status === 307 || response.status === 302) {
+                        status.textContent = '✅ Вход выполнен! Перенаправление...';
+                        window.location.href = 'https://www.mrkt.land';
+                    } else {
+                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
+                        document.getElementById('loginBtn').disabled = false;
+                        document.getElementById('loginBtn').textContent = 'Войти на ПК';
                     }
-
-                    try {
-                        const response = await fetch(SERVER_URL + '/check', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ state: state })
-                        });
-
-                        const data = await response.json();
-                        console.log('📡 Проверка статуса:', data);
-
-                        if (data.status === 'confirmed') {
-                            clearInterval(interval);
-                            statusElement.textContent = '✅ Вход выполнен!';
-                            resolve();
-                        } else {
-                            statusElement.textContent = '⏳ Ожидаем подтверждение на телефоне... (' + attempts + '/' + maxAttempts + ')';
-                        }
-                    } catch (error) {
-                        console.warn('⚠️ Ошибка проверки:', error);
-                    }
-                }, 2000);
-            });
-        }
+                })
+                .catch(error => {
+                    console.error('❌ Ошибка:', error);
+                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
+                    document.getElementById('loginBtn').disabled = false;
+                    document.getElementById('loginBtn').textContent = 'Войти на ПК';
+                });
+            }
+        });
     </script>
 </body>
 </html>
